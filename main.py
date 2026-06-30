@@ -9,10 +9,17 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# ── LISTA DE DOMINIOS PERMITIDOS ──
+origins = [
+    "http://localhost:5173",                     # Tu entorno local de Vite
+    "https://portal-financiero-bcp.vercel.app",   # URL real de tu frontend en producción
+]
+
+
 # 2. AGREGAR ESTO PARA DAR PERMISO A REACT
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permite que cualquier frontend se conecte
+    allow_origins=origins, # Permite que cualquier frontend se conecte
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
