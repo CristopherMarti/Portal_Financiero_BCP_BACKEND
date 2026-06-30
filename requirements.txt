@@ -7,3 +7,5 @@ pydantic>=2.0.0
 passlib[bcrypt]>=1.7.4   # Para encriptar contraseñas
 python-jose[cryptography]>=3.3.0 # Para los tokens JWT (Login)
 alembic>=1.11.1          # Para crear las tablas en la base de datos automáticamente
+bcrypt==4.0.1
+passlib[bcrypt]==1.7.4

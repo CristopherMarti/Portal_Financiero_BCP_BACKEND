@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from repositories.auth_repository import AuthRepository
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "bcp_core_secreto_super_seguro_2026")
 ALGORITHM  = os.getenv("ALGORITHM", "HS256")
