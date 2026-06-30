@@ -7,7 +7,7 @@ class PrestamoService:
         self.repo = PrestamoRepository(db)
 
     def crear_nueva_solicitud(self, data: dict):
-        # Solución al NotNullViolation: Asignamos el monto al saldo inicial
+        # Forzamos que si viene el monto, se asigne de inmediato al saldo inicial
         if "monto" in data and data["monto"] is not None:
             data["saldo_pendiente"] = data["monto"]
             
