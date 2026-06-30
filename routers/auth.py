@@ -1,31 +1,25 @@
 # routers/auth.py
-from fastapi import APIRouter, HTTPException
-from controllers.auth_controller import AuthController
-from models.schemas import LoginRequest, RegistroRequest
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from database import get_db
+from services.auth_service import AuthService
+from pydantic import BaseModel
 
-router     = APIRouter()
-controller = AuthController()
+router = APIRouter()
 
-# POST /api/auth/registro
-@router.post("/registro", summary="Registrar nuevo usuario")
-async def registro(datos: RegistroRequest):
-    try:
-        return await controller.registro(datos)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+class LoginSchema(BaseModel):
+    username: str   # codcliente: ej. cli000007
+    dni:      str   # 8 dígitos: ej. 12345677
+    password: str   # clave: ej. demo1234
 
-# POST /api/auth/login
-@router.post("/login", summary="Iniciar sesión")
-async def login(datos: LoginRequest):
-    try:
-        return await controller.login(datos)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+@router.post("/login")
+def login(datos: LoginSchema, db: Session = Depends(get_db)):
+    service   = AuthService(db)
+    resultado = service.autenticar_usuario(datos.username, datos.dni, datos.password)
 
-# POST /api/auth/logout
-@router.post("/logout", summary="Cerrar sesión")
-async def logout(datos: dict):
-    try:
-        return await controller.logout(datos.get("access_token"))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    if not resultado:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario, DNI o contraseña incorrectos"
+        )
+    return resultado

@@ -1,38 +1,18 @@
-import os
-from supabase import create_client
-from dotenv import load_dotenv
-
-load_dotenv()
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY"))
+from sqlalchemy.orm import Session
+from models.ahorro import Ahorro  # Asegúrate de tener este modelo mapeado
 
 class AhorroRepository:
+    def __init__(self, db: Session):
+        self.db = db
 
-    def obtener_cuenta_ahorro(self, user_id: str) -> dict:
-        """Obtiene la cuenta de ahorro del usuario desde cuentas_ahorro."""
-        response = supabase.table("cuentas_ahorro") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .limit(1) \
-            .execute()
-        return response.data[0] if response.data else None
+    def obtener_cuenta_ahorro(self, user_id: str):
+        # ANTES: supabase.table("cuentas_ahorro")...
+        # AHORA:
+        return self.db.query(Ahorro).filter(Ahorro.user_id == user_id).first()
 
-    def obtener_cuenta_ahorro_detalle(self, user_id: str) -> dict:
-        """Obtiene el detalle de la cuenta tipo ahorro desde cuentas."""
-        response = supabase.table("cuentas") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .eq("tipo", "ahorro") \
-            .limit(1) \
-            .execute()
-        return response.data[0] if response.data else None
-
-    def obtener_movimientos(self, user_id: str, cuenta_id: str, limite: int = 10) -> list:
-        """Obtiene los movimientos de la cuenta de ahorro."""
-        response = supabase.table("transacciones") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .eq("cuenta_id", cuenta_id) \
-            .order("fecha", desc=True) \
-            .limit(limite) \
-            .execute()
-        return response.data
+    def obtener_movimientos(self, user_id: str, cuenta_id: str):
+        # AHORA:
+        return self.db.query(Transaccion).filter(
+            Transaccion.user_id == user_id, 
+            Transaccion.cuenta_id == cuenta_id
+        ).order_by(Transaccion.fecha.desc()).limit(10).all()

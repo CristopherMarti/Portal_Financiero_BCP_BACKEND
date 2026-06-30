@@ -1,54 +1,49 @@
 # services/auth_service.py
+import os
+from datetime import datetime, timedelta
+from jose import jwt
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 from repositories.auth_repository import AuthRepository
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+SECRET_KEY = os.getenv("SECRET_KEY", "bcp_core_secreto_super_seguro_2026")
+ALGORITHM  = os.getenv("ALGORITHM", "HS256")
+EXPIRE_MIN = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 120))
+
 class AuthService:
+    def __init__(self, db: Session):
+        self.repo = AuthRepository(db)
 
-    def __init__(self):
-        self.repository = AuthRepository()
-
-    def registrar_usuario(self, email: str, password: str, nombre: str) -> dict:
-        """
-        Registra un usuario en Supabase Auth y crea sus cuentas demo.
-        """
-        # Verificar si el email ya existe
-        existente = self.repository.buscar_usuario_por_email(email)
-        if existente:
-            raise ValueError("Este correo ya está registrado.")
-
-        # Crear usuario en Supabase Auth
-        usuario = self.repository.crear_usuario(email, password, nombre)
+    def autenticar_usuario(self, username: str, dni: str, password: str) -> dict:
+        usuario = self.repo.buscar_por_username_y_dni(username, dni)
         if not usuario:
-            raise ValueError("Error al crear el usuario.")
+            return None
 
-        # Crear cuentas demo automáticamente
-        self.repository.crear_cuentas_demo(usuario["id"])
+        if not pwd_context.verify(password, usuario.password_hash):
+            self.repo.incrementar_intentos(usuario)
+            return None
 
-        return {
-            "user_id": usuario["id"],
-            "email":   usuario["email"],
-            "nombre":  nombre
-        }
+        self.repo.resetear_intentos(usuario)
+        cliente = self.repo.buscar_cliente_por_id(usuario.cliente_id)
 
-    def iniciar_sesion(self, email: str, password: str) -> dict:
-        """
-        Inicia sesión y devuelve el token de acceso.
-        """
-        resultado = self.repository.login(email, password)
-        if not resultado:
-            raise ValueError("Correo o contraseña incorrectos.")
+        token = self._crear_token({
+            "sub":        usuario.username,
+            "cliente_id": usuario.cliente_id,
+            "nombres":    cliente.nombres if cliente else "",
+        })
 
         return {
-            "access_token":  resultado["access_token"],
-            "refresh_token": resultado["refresh_token"],
-            "user_id":       resultado["user"]["id"],
-            "email":         resultado["user"]["email"],
-            "nombre":        resultado["user"].get("user_metadata", {}).get("full_name", "")
+            "success":      True,
+            "access_token": token,
+            "token_type":   "bearer",
+            "user_id":      usuario.cliente_id,
+            "username":     usuario.username,
+            "nombre":       cliente.nombres if cliente else "",
         }
 
-    def cerrar_sesion(self, access_token: str) -> None:
-        """
-        Cierra la sesión invalidando el token.
-        """
-        if not access_token:
-            raise ValueError("Token requerido.")
-        self.repository.logout(access_token)
+    def _crear_token(self, data: dict) -> str:
+        payload = data.copy()
+        payload["exp"] = datetime.utcnow() + timedelta(minutes=EXPIRE_MIN)
+        return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
